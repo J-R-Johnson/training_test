@@ -1,0 +1,123 @@
+---
+title: "day3-ex3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+```
+
+## Day 3 example 
+
+Upload the escapement count data 
+
+```{r}
+counts <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e", stringsAsFactors = FALSE)
+
+head(counts)
+summary(counts)
+#need to know all of the different locations so I can code specific for Bristol Bay in select later
+unique(counts$SASAP.Region)
+
+```
+Upload escapement goal data
+
+```{r}
+goals <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/knb.92014.1", stringsAsFactors = FALSE)
+
+head(goals)
+unique(goals$Region)
+#Bristol Bay is under a Region
+```
+Filter goal data
+
+```{r}
+goals_bbsockeye <- goals %>% filter(Region =="Bristol Bay", Species =="Sockeye") %>% 
+  mutate(Lower = as.numeric(Lower), Initial.Year = as.integer(Initial.Year)) %>% 
+  select(System, Lower, Upper, Initial.Year) %>% drop_na()
+head(goals_bbsockeye)
+
+
+
+#flter goal_bb by species for just sockeye
+
+#goals_bbsockeye1 <- goals_bb %>% filter(Species =="Sockeye")
+#head(goals_bbsockeye1)
+
+#check column types as per instructions
+#summary(goals_bbsockeye1)
+# lower was not numeric
+# added a mutate function to first line of code in this chunk to set Lower as numeric
+
+#filter to just stocks that we have escapement goals for 
+
+# code stolen from example below here - beacuse i am slow
+#bb_sockeye_goals <- goals %>% 
+  #filter(Region == "Bristol Bay", Species == "Sockeye") %>% 
+  #mutate(Lower = as.integer(Lower), Initial.Year = as.integer(Initial.Year)) %>% 
+  #select(System, Lower, Upper, Initial.Year) %>% 
+  #drop_na()
+
+#datatable(bb_sockeye_goals)
+
+```
+
+
+
+Filter count data
+# we want just bristol bay and just sockeye
+
+```{r}
+counts_bbsockeye <- counts %>% filter(SASAP.Region == "Bristol Bay", 
+                               Species =="Sockeye", 
+                               Location %in% goals_bbsockeye$System) %>%
+  separate(sampleDate, c("Year", "Month", "Day"), sep = "-") %>% 
+  group_by(Location, Year) %>% 
+  summarize(Escapement = sum(DailyCount))
+
+head(counts_bbsockeye)
+#Make a datatable 
+
+
+
+#code from example stolen an put below here 
+#bb_sockeye_escapements <- esc %>% 
+  #filter(SASAP.Region == "Bristol Bay", 
+         #Species == "Sockeye",
+         #Location %in% bb_sockeye_goals$System) %>%
+  #separate(sampleDate, c("Year", "Month", "Day"), sep = "-") %>% 
+  #group_by(Location, Year) %>% 
+  #summarize(Escapement = sum(DailyCount))
+
+
+
+```
+
+Join data
+
+```{r}
+#stolen code from example
+#bb_escapement_with_goals <- 
+  #left_join(bb_sockeye_escapements, bb_sockeye_goals, by = c("Location" = "System")) %>% 
+  #mutate(is_goal_within = ifelse(Escapement < Upper & Escapement > Lower, TRUE, FALSE),
+         #drop_by_year = ifelse(Year >= Initial.Year, FALSE, TRUE))
+         
+#datatable(bb_escapement_with_goals)
+#taken from data-cleaning example
+#catch_joined <- left_join(catch_long, region_defs,
+                         # by = c("Region" = "code"))
+bbsockeyeEandGjoin <- left_join(counts_bbsockeye, goals_bbsockeye, by = c("Location" ="System")) %>% mutate(is_goal_within = ifelse(Escapement <Upper & Escapement > Lower, TRUE, FALSE), 
+                                                                                        drop_by_year = ifelse(Year >= Initial.Year, FALSE, TRUE))
+
+head(bbsockeyeEandGjoin)
+```
+
+
+
+
+
