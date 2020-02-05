@@ -7,8 +7,179 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r load packages needed here, warning= FALSE, message = FALSE}
+#be careful about suppressing warning messages. 
+library(dplyr)
+library(tidyr)
+```
+
+you can call a function explicitly from a package with package_name::funtion_name()
+^do this if you the package isn't doing what you expect i.e. there are two packages with the same named function
+
 # Read in the data
 
-# clean data
+```{r}
+catch_original <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1", stringsAsFactors = FALSE)
+
+#windows computers may need this code: read.csv(url("link", method = "libcurl"), stringsAsFactors = FALSE)
+
+head(catch_original)
+
+#command + shift + m for pipe operator %>% 
+
+
+
+
+
+```
+
+
+# clean data - make tidy
+
+Remove notes and "all" columns becasue we don't need them
+"I" in the chinook column (row 401) should be a 1
+
+```{r}
+catch_clean <- catch_original %>% 
+  select(Region, Year, Chinook, Sockeye, Coho, Pink, Chum) %>% 
+  # to fix chinook column
+  mutate(Chinook = ifelse(Chinook =="I", 1, Chinook)) %>% 
+  mutate(Chinook = as.numeric(Chinook))
+
+# you could also select by clumn you want to delete with select(-All, -notesRegCode) this drops just the notesRegCode column
+
+head(catch_clean)
+summary(catch_clean)
+# summary lets you see that chinook column is a character
+
+```
+
+
+
+# data QA
+
+Which values were converted to NA by as.numeric
+Checking for NA calues
+
+```{r}
+#which values in the Chinook column that are problematic ?
+i <- which(is.na(catch_clean$Chinook))
+i
+catch_original[i, ]
+#This shows that there was an I in the Chinook column on row 401 
+```
+
+
+## convert to long format
+
+```{r}
+catch_long <- catch_clean %>% 
+  pivot_longer(cols = c(Chinook, Sockeye, Coho, Pink, Chum), 
+               names_to = "species", values_to = "catch") %>% 
+  rename(catch_thousands = catch) %>% 
+  mutate(catch = catch_thousands * 1000) %>% 
+  #to drop the column after tranforming catch to thousands metric
+  select(-catch_thousands)
+  #could use -c(Region, Year) instead of list if you have a bunch 
+
+head(catch_long)
+```
+
+# Example of pivot_wider
+
+
+Eaxmple for wide format
+```{r}
+catch_wide <- catch_long %>% pivot_wider(names_from = "Year"
+                                         , values_from = "catch")
+
+head(catch_wide)
+```
+
+
+# summarize
+
+mean catch per region
+
+```{r}
+mean_region <- catch_long %>%
+  group_by(Region, species) %>% 
+  summarise(mean_catch = mean(catch),
+            n_obs = n())
+
+head(mean_region)
+  
+```
+
+FIlter for only sockeye species
+```{r}
+```
+
+
+```{r}
+sockeye_catch <- catch_long %>% 
+  filter(species =="Sockeye") %>% 
+  group_by(Region) %>% 
+  summarise(mean_catch = mean(catch)) 
+  
+
+head(sockeye_catch)
+```
+
 
 # join to other data
+
+Read in the region definitions table
+```{r}
+region_defs <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1", stringsAsFactors = FALSE) %>% select(code, mgmtArea)
+head(region_defs)
+
+
+```
+
+```{r}
+catch_joined <- left_join(catch_long, region_defs,
+                          by = c("Region" = "code"))
+head(catch_joined)
+```
+
+
+# seperate and unite
+
+```{r}
+sites_df <- data.frame(site = c("HAW-101",
+                                "HAW-103",
+                                "OAH-320",
+                                "OAH-219",
+                                "MAI-039"),
+                       stringsAsFactors = FALSE)
+
+
+sites_df %>% 
+  separate(site, into = c("island", "site_number"), sep = "-")
+
+# can set remove = false to keep original column
+```
+
+
+```{r}
+#Unite example
+dates_df <- data.frame(year = c("1930",
+                                "1930",
+                                "1930"),
+                       month = c("12",
+                                "12",
+                                "12"),
+                       day = c("14",
+                               "15",
+                               "16"),
+                       stringsAsFactors = FALSE)
+
+dates_df %>% 
+  unite(date, year, month, day, sep = "-", remove = FALSE)
+```
+
+
+
+
+
