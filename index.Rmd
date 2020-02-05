@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Analysis Plan 
 
 - [Data Cleaning](data-cleaning.html)
+- [Day3ex3](day3-ex3.html)
 - [Data Models]
 - [Visualization]
 - [Manuscript]
