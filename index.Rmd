@@ -12,5 +12,5 @@ knitr::opts_chunk$set(echo = TRUE)
 - [Data Cleaning](data-cleaning.html)
 - [Day3ex3](day3-ex3.html)
 - [Data Models]
-- [Visualization]
+- [Visualization](plotting.html)
 - [Manuscript]
