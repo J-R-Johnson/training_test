@@ -1,0 +1,143 @@
+---
+title: "Publication Graphics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+library calls
+
+```{r}
+  library(leaflet)
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(DT)
+  library(scales)
+```
+
+Get data
+
+```{r}
+data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e"
+
+esc <- tryCatch(
+    read.csv("data/escapement.csv", stringsAsFactors = FALSE),
+    error=function(cond) {
+        message(paste("Escapement file does not seem to exist, so get it from the KNB."))
+        esc <- read.csv(url(data_url, method = "libcurl"), stringsAsFactors = FALSE)
+        return(esc)
+    }
+)
+
+head(esc)
+summary(esc)
+
+```
+
+read in and tidy data
+```{r}
+
+annual_esc <- esc %>% 
+  # mutate(year = lubridate::sampleDate)) if you have lubridate installed
+  separate(sampleDate, c("Year", "Month", "Day"), sep = "-") %>% 
+  mutate(Year = as.numeric(Year)) %>% 
+  group_by(Species, SASAP.Region, Year) %>% 
+  summarize(escapement = sum(DailyCount)) %>% 
+  filter(Species %in% c("Chinook", "Sockeye", "Chum", "Coho", "Pink"))
+
+head(annual_esc)
+
+
+
+```
+
+
+make some static plots
+```{r}
+
+ggplot(data = annual_esc, mapping = aes(x = Species, y = escapement, fill = SASAP.Region)) +
+  geom_col()
+
+```
+
+```{r}
+kodiak_esc <- annual_esc %>% 
+  filter(SASAP.Region == "Kodiak") 
+#create your own theme element - if you call a ggplot theme after it will overwrite
+my_theme <- theme_bw() +
+  theme(legend.position = "bottom", 
+        legend.title = element_blank())
+
+  ggplot(data = kodiak_esc, mapping = aes(x= Year, y = escapement, color = Species))+
+  geom_line() +
+  geom_point(size = 0.5) +
+    #line below here took the y axis out of scientific notation - 
+    #could use this for log sclaes, or percents ect. 
+    #comma below here is from the sclaes package ie. labels = scales::comma
+  scale_y_continuous(labels = comma) +
+  ylab("Escapement (num fish)") +
+  xlab("Year") +
+  ggtitle("Kodiak Salmon Escapement") +
+  my_theme
+
+```
+
+multiple plots
+
+```{r, fig.width=8, fig.height=5}
+# can adjust figure size option in heading
+ggplot(data = annual_esc, mapping = aes( x = Year, y = escapement, color = Species))+
+  geom_line()+
+  geom_point()+
+  scale_y_continuous(labels = comma)+
+  facet_wrap(~SASAP.Region, scales = "free_y", ncol = 2)+
+  my_theme
+#facet_wrap sticks plots together quickly across a variable
+#scales aragument is not from sclaes package - free_y allows the axis to be different
+# ncol and nrow in facet_wrap change how many plott wide and/or deep
+```
+
+
+make some interactive maps
+```{r}
+locations <- esc %>% 
+  distinct(Location, Latitude, Longitude) %>% 
+#distinct pull out unique values from escapement data frame
+  drop_na()
+#removes na values for mapping
+
+head(locations)
+datatable(locations)
+#datatable creates interactive table 
+```
+ leaflet example for producing interactive maps
+```{r}
+leaflet(locations) %>% 
+  #uses pipes instead of + signs like ggplot
+  addTiles() %>% 
+  addMarkers(lng = ~Longitude, lat = ~Latitude, popup = ~Location)
+```
+
+a prettier version of the above map
+```{r}
+leaflet(locations) %>% 
+  addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+              layers = 'GEBCO_LATEST',
+              attribution = "Imagery reproduced from the GEBCO_2014 Grid, version 20150318, www.gebco.net") %>%
+  addCircleMarkers(lng = ~Longitude,
+                   lat = ~Latitude,
+                   popup = ~ Location,
+                   radius = 5,
+                   # set fill properties
+                   fillColor = "salmon",
+                   fillOpacity = 1,
+                   # set stroke properties
+                   stroke = T,
+                   weight = 0.5,
+                   color = "white",
+                   opacity = 1)
+```
+
