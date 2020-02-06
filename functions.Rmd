@@ -7,4 +7,79 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r}
+# to load libraries
+library(roxygen2)
+library(assertthat)
+library(mytools)
+```
+source relevant functions 
+
+```{r}
+source('conversions.R')
+```
+
+
+```{r}
+
+airtemps <- c(212, 30.3, 78, 32, 0)
+celsius1 <- (airtemps[1]-32)*5/9
+#repeating the process is a waste - create a function
+celsius2 <- (airtemps[2]-32)*5/9
+celsius3 <- (airtemps[3]-32)*5/9
+celsius4 <- (airtemps[4]-32)*5/9
+```
+Define conversion functions
+First, F to C
+```{r}
+# the poundsign nomenclature below is specific to anotating functions
+#' Convert degrees Fahrenheit to Celsius
+#' 
+#' We use the simple formula for temperature conversion to convert. 
+#' One can find this in any intro Physics book. 
+#define parameters
+#' @param fahr The temperature to be converted in degrees Fahrenheit
+#' @return the temperature converted to degrees Celsius
+#' @keywords conversion
+#' @examples
+#' fahr_to_celsius(32)
+#' fahr_to_celsius(c(212, 100, 32))
+
+
+fahr_to_celsius <- function(fahr) {
+  #stopifnot(is.numeric(fahr))
+  assert_that(is.numeric(fahr))
+  celsius <- (fahr-32)*5/9
+  return(celsius)
+}
+```
+
+```{r}
+celsius5 <- fahr_to_celsius(airtemps[1])
+celsius5
+
+celsius <- fahr_to_celsius(airtemps)
+celsius
+```
+
+C to F function
+```{r}
+
+
+
+celsius_to_fahr <- function(celsius) {
+  fahr <- (celsius*9/5)+32
+  return(fahr)
+  
+}
+
+fahr <- celsius_to_fahr(celsius)
+fahr
+
+```
+
+```{r}
+environment_info("Works from RMD")
+
+```
+
